@@ -1,0 +1,36 @@
+{
+  "name": "yogurt-to-list-agent",
+  "version": "2.1.0",
+  "description": "An AI-powered to-do list desktop app with a paper-texture UI",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder"
+  },
+  "build": {
+    "appId": "com.yogurttolist.agent",
+    "productName": "Yogurt to List",
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": "dmg",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": null,
+      "entitlementsInherit": null
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "src/**/*",
+      "package.json"
+    ],
+    "extraResources": [],
+    "directories": {
+      "output": "dist"
+    }
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0"
+  }
+}

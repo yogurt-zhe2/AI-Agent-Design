@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Yogurt to List Agent</title>
+<link rel="stylesheet" href="./styles.css" />
+<link href="https://fonts.googleapis.com/css2?family=LXGW+WenKai:wght@300;400;700&family=Caveat:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════
+     Toolbar
+     draggable: draggable window area
+     no-drag:   button area (not draggable)
+     ═══════════════════════════════════════════ -->
+<header class="app-toolbar draggable">
+  <div class="toolbar-left">
+    <div class="traffic-lights"></div>
+    <div class="app-title">
+      <span data-i18n="appTitle">Yogurt to List</span>
+      <span class="app-title-sub" data-i18n="appTitleSub">Agent</span>
+    </div>
+  </div>
+
+  <div class="toolbar-right no-drag">
+    <!-- Language switch -->
+    <button class="toolbar-btn" id="btnLangSwitch" data-tooltip="Switch Language">
+      <span id="langSwitchLabel">EN</span>
+    </button>
+
+    <!-- AI Decompose -->
+    <button class="toolbar-btn ai-btn" id="btnAIDecompose" data-tooltip="AI 拆解任务" data-tooltip-i18n="aiDecomposeTooltip">
+      <span class="btn-icon">✦</span>
+      <span data-i18n="aiDecompose">AI Decompose</span>
+    </button>
+
+    <!-- AI Chat -->
+    <button class="toolbar-btn" id="btnAISidebar" data-tooltip="问问 AI" data-tooltip-i18n="aiChatTooltip">
+      <span>💬</span>
+    </button>
+
+    <!-- Dashboard -->
+    <button class="toolbar-btn" id="btnDashboard" data-tooltip="数据面板" data-tooltip-i18n="dashboardTitle">
+      <span>📊</span>
+    </button>
+
+    <!-- Settings -->
+    <button class="toolbar-btn" id="btnSettings" data-tooltip="设置" data-tooltip-i18n="settingsTooltip">
+      <span>⚙</span>
+    </button>
+  </div>
+</header>
+
+<!-- ═══════════════════════════════════════════
+     Main content
+     ═══════════════════════════════════════════ -->
+<main class="app-main" id="appMain">
+  <div class="notebook">
+
+    <!-- Date & Greeting -->
+    <header class="header">
+      <div class="date" id="dateDisplay"></div>
+      <div class="greeting" id="greetingText"></div>
+      <div class="time-hint" id="timeHint"></div>
+    </header>
+
+    <!-- Daily review card (shown in evening, or triggered manually) -->
+    <div class="daily-review" id="dailyReview" style="display: none;">
+      <div class="daily-review-header" id="dailyReviewHeader">
+        <div class="daily-review-title">
+          <span class="review-icon">📝</span>
+          <span data-i18n="dailyReviewTitle">Today's Summary</span>
+        </div>
+        <span class="daily-review-toggle">▾</span>
+      </div>
+      <div class="daily-review-body">
+        <div class="daily-review-content" id="dailyReviewContent">
+        </div>
+      </div>
+      <button class="daily-review-close" id="dailyReviewClose">×</button>
+    </div>
+
+    <!-- Task input -->
+    <div class="input-area">
+      <input type="text" id="taskInput" data-i18n-placeholder="inputPlaceholder" placeholder="写点要做的事，然后按回车" autocomplete="off" />
+      <div class="tag-bar">
+        <button class="tag-btn" data-tag="creative" data-i18n="tagCreative">创造力</button>
+        <button class="tag-btn" data-tag="execution" data-i18n="tagExecution">执行力</button>
+        <button class="tag-btn" data-tag="closing" data-i18n="tagClosing">收尾</button>
+      </div>
+    </div>
+
+    <!-- Filter bar -->
+    <div class="filter-bar">
+      <button class="filter-btn active" data-filter="all" data-i18n="filterAll">全部</button>
+      <button class="filter-btn" data-filter="creative" data-i18n="tagCreative">创造力</button>
+      <button class="filter-btn" data-filter="execution" data-i18n="tagExecution">执行力</button>
+      <button class="filter-btn" data-filter="closing" data-i18n="tagClosing">收尾</button>
+    </div>
+
+    <!-- Encouragement -->
+    <div class="encourage-banner" id="encourageBanner"></div>
+
+    <!-- Task list -->
+    <div class="task-list" id="taskList"></div>
+
+    <!-- Recently completed -->
+    <div class="recent-completed" id="recentCompleted" style="display:none;">
+      <div class="recent-completed-header">
+        <span class="recent-completed-title" data-i18n="recentCompletedTitle">最近完成</span>
+        <span class="recent-completed-count" id="recentCompletedCount"></span>
+      </div>
+      <div class="recent-completed-list" id="recentCompletedList"></div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer" id="footerArea">
+      <div class="footer-stat">
+        <span data-i18n="weekCompleted">本周已完成</span> <span class="count" id="weekCount">0</span> <span data-i18n="weekCountUnit">件</span>
+      </div>
+      <div class="progress-bar-wrap">
+        <div class="progress-bar-fill" id="progressBar"></div>
+      </div>
+      <div class="footer-tools">
+        <button class="footer-tool-btn" id="btnExport" data-i18n="exportData">导出数据</button>
+        <button class="footer-tool-btn" id="btnImport" data-i18n="importData">导入数据</button>
+        <button class="footer-tool-btn" id="btnDailyReview" data-i18n="dailyReviewBtn">📊 今日复盘</button>
+        <input type="file" id="importFile" accept=".json" style="display:none" />
+      </div>
+    </footer>
+
+  </div>
+</main>
+
+<!-- ═══════════════════════════════════════════
+     AI Agent Sidebar
+     ═══════════════════════════════════════════ -->
+<aside class="ai-sidebar" id="aiSidebar">
+  <div class="ai-sidebar-header">
+    <div class="ai-sidebar-title">
+      <span class="ai-title-icon">✦</span>
+      <span data-i18n="aiAssistantTitle">AI Agent</span>
+      <span class="agent-memory-badge" id="agentMemoryBadge" title="">🧠</span>
+    </div>
+    <div class="ai-sidebar-header-actions">
+      <button class="ai-sidebar-btn" id="btnNewChat" data-tooltip="New Chat" data-i18n-title="agentNewChat" title="新对话">🔄</button>
+      <button class="ai-sidebar-btn" id="btnAutoPlan" data-tooltip="Auto Plan" data-i18n-title="agentAutoPlan" title="今日规划">📋</button>
+      <button class="ai-sidebar-close" id="aiSidebarClose">×</button>
+    </div>
+  </div>
+
+  <!-- Agent Plan Panel (collapsible) -->
+  <div class="agent-plan-panel" id="agentPlanPanel" style="display:none;">
+    <div class="agent-plan-header">
+      <span class="agent-plan-icon">📋</span>
+      <span data-i18n="agentPlanTitle">Agent 今日规划</span>
+    </div>
+    <div class="agent-plan-content" id="agentPlanContent">
+      <!-- JS fills this -->
+    </div>
+  </div>
+
+  <div class="ai-messages" id="aiMessages">
+    <!-- JS renders history or welcome message -->
+  </div>
+
+  <div class="ai-quick-actions">
+    <div class="ai-quick-actions-label" data-i18n="quickActionsLabel">试试这些：</div>
+    <div class="ai-quick-actions-list" id="quickActionsList">
+      <!-- JS will populate these with i18n -->
+    </div>
+  </div>
+
+  <div class="ai-sidebar-footer">
+    <div class="ai-input-wrap">
+      <textarea class="ai-input" id="aiInput" data-i18n-placeholder="aiInputPlaceholder" placeholder="随便问问…" rows="1"></textarea>
+      <button class="ai-send-btn" id="aiSendBtn">↑</button>
+    </div>
+  </div>
+</aside>
+
+<!-- ═══════════════════════════════════════════
+     Dashboard & History Modal
+     ═══════════════════════════════════════════ -->
+<div class="dashboard-overlay" id="dashboardOverlay">
+  <div class="dashboard-card">
+    <div class="dashboard-header">
+      <div class="dashboard-tabs">
+        <button class="dashboard-tab active" data-tab="dashboard" data-i18n="dashboardTitle">数据面板</button>
+        <button class="dashboard-tab" data-tab="history" data-i18n="historyTitle">历史记录</button>
+      </div>
+      <button class="dashboard-close" id="dashboardClose">×</button>
+    </div>
+
+    <!-- Dashboard Tab -->
+    <div class="dashboard-body" id="dashboardTab">
+      <!-- Stats row -->
+      <div class="dash-stats-row">
+        <div class="dash-stat-card">
+          <div class="dash-stat-label" data-i18n="dashboardToday">今日</div>
+          <div class="dash-stat-value" id="dashTodayDone">0</div>
+          <div class="dash-stat-sub"><span data-i18n="dashboardCompleted">完成</span> / <span id="dashTodayTotal">0</span></div>
+        </div>
+        <div class="dash-stat-card">
+          <div class="dash-stat-label" data-i18n="dashboardRate">完成率</div>
+          <div class="dash-stat-value" id="dashTodayRate">0%</div>
+          <div class="dash-stat-sub"><span data-i18n="dashboardCreated">新增</span> <span id="dashTodayCreated">0</span></div>
+        </div>
+        <div class="dash-stat-card">
+          <div class="dash-stat-label" data-i18n="dashboardWeek">本周完成</div>
+          <div class="dash-stat-value" id="dashWeekDone">0</div>
+        </div>
+        <div class="dash-stat-card">
+          <div class="dash-stat-label" data-i18n="dashboardStreak">连续天数</div>
+          <div class="dash-stat-value"><span id="dashStreak">0</span> <span class="dash-stat-unit" data-i18n="dashboardDay">天</span></div>
+        </div>
+      </div>
+
+      <!-- 7-day trend -->
+      <div class="dash-section">
+        <div class="dash-section-title" data-i18n="dashboardTrend">近 7 天趋势</div>
+        <div class="dash-chart" id="dashTrendChart"></div>
+      </div>
+
+      <!-- Time + Tag distribution -->
+      <div class="dash-row-2col">
+        <div class="dash-section">
+          <div class="dash-section-title" data-i18n="dashboardTimeDist">时段分布</div>
+          <div class="dash-bars" id="dashTimeBars"></div>
+        </div>
+        <div class="dash-section">
+          <div class="dash-section-title" data-i18n="dashboardTagDist">标签分布</div>
+          <div class="dash-bars" id="dashTagBars"></div>
+        </div>
+      </div>
+
+      <!-- Bottom stats -->
+      <div class="dash-bottom-row">
+        <div class="dash-bottom-item">
+          <span class="dash-bottom-label" data-i18n="dashboardTotal">累计完成</span>
+          <span class="dash-bottom-value" id="dashTotalDone">0</span>
+        </div>
+        <div class="dash-bottom-item">
+          <span class="dash-bottom-label" data-i18n="dashboardAvgDay">日均完成</span>
+          <span class="dash-bottom-value" id="dashAvgDay">0</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- History Tab -->
+    <div class="dashboard-body hidden" id="historyTab">
+      <!-- Sleep-style visualization -->
+      <div class="history-viz">
+        <div class="history-viz-header">
+          <div class="history-viz-title" data-i18n="historyVizTitle">完成记录</div>
+          <div class="history-viz-range" id="historyVizRange"></div>
+        </div>
+        <div class="history-viz-chart" id="historyVizChart">
+          <!-- JS renders the weekly grid + bar chart -->
+        </div>
+        <div class="history-viz-legend">
+          <div class="history-viz-legend-item">
+            <span class="legend-dot done"></span>
+            <span data-i18n="historyVizDone">已完成</span>
+          </div>
+          <div class="history-viz-legend-item">
+            <span class="legend-dot added"></span>
+            <span data-i18n="historyVizAdded">已添加</span>
+          </div>
+          <div class="history-viz-legend-item">
+            <span class="legend-dot empty"></span>
+            <span data-i18n="historyVizNone">无记录</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Date-archived history list -->
+      <div class="history-archive">
+        <div class="history-archive-header">
+          <div class="history-archive-title" data-i18n="historyArchiveTitle">按日期浏览</div>
+          <div class="history-archive-summary" id="historyArchiveSummary"></div>
+        </div>
+        <div class="history-list" id="historyList">
+          <!-- JS fills this -->
+        </div>
+      </div>
+
+      <div class="history-footer">
+        <button class="btn btn-ghost" id="btnClearHistory" data-i18n="historyClear">清空记录</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     Settings Modal
+     ═══════════════════════════════════════════ -->
+<div class="settings-overlay" id="settingsOverlay">
+  <div class="settings-card">
+    <div class="settings-header">
+      <div class="settings-title" data-i18n="settingsTitle">⚙ 设置</div>
+      <button class="settings-close" id="settingsClose">×</button>
+    </div>
+
+    <div class="settings-body">
+
+      <div class="settings-section-title">
+        <span class="section-icon">🤖</span>
+        <span data-i18n="aiModelConfig">AI 模型配置</span>
+      </div>
+
+      <div class="settings-group">
+        <label class="settings-label" data-i18n="vendorLabel">AI 服务商</label>
+        <select class="settings-select" id="settingVendor">
+          <option value="" data-i18n-option="vendorPlaceholder">请选择…</option>
+        </select>
+      </div>
+
+      <div class="settings-group">
+        <label class="settings-label" data-i18n="modelLabel">模型</label>
+        <select class="settings-select" id="settingModel">
+          <option value="" data-i18n-option="modelPlaceholder">请先选择服务商</option>
+        </select>
+        <div class="settings-desc" data-i18n="modelDesc">根据服务商的不同，可选模型会自动更新</div>
+      </div>
+
+      <div class="settings-group">
+        <label class="settings-label" data-i18n="apiKeyLabel">API Key</label>
+        <div class="settings-input-wrap">
+          <input type="password" class="settings-input" id="settingApiKey" data-i18n-placeholder="apiKeyPlaceholder" placeholder="sk-…" autocomplete="off" />
+          <button class="settings-input-toggle" id="apiKeyToggle" title="显示/隐藏">👁</button>
+        </div>
+        <div class="settings-desc" data-i18n="apiKeyDesc">你的 API Key 仅存储在本地，不会上传</div>
+      </div>
+
+      <div class="settings-group">
+        <button class="btn btn-test" id="btnTestConnection" data-i18n="testConnection">🔌 测试连接</button>
+        <div class="settings-status" id="settingsStatus"></div>
+        <div class="settings-status-card" id="connectionStatusCard"></div>
+      </div>
+
+      <div class="settings-section-title">
+        <span class="section-icon">📋</span>
+        <span data-i18n="aiFeatureToggles">AI 功能开关</span>
+      </div>
+
+      <div class="settings-toggle-row">
+        <span class="settings-toggle-label" data-i18n="toggleDecompose">智能任务拆解</span>
+        <label class="settings-toggle">
+          <input type="checkbox" id="toggleDecompose" checked />
+          <span class="settings-toggle-track"></span>
+          <span class="settings-toggle-thumb"></span>
+        </label>
+      </div>
+
+      <div class="settings-toggle-row">
+        <span class="settings-toggle-label" data-i18n="toggleChat">AI 对话助手</span>
+        <label class="settings-toggle">
+          <input type="checkbox" id="toggleChat" checked />
+          <span class="settings-toggle-track"></span>
+          <span class="settings-toggle-thumb"></span>
+        </label>
+      </div>
+
+      <div class="settings-toggle-row">
+        <span class="settings-toggle-label" data-i18n="toggleReview">每日智能复盘</span>
+        <label class="settings-toggle">
+          <input type="checkbox" id="toggleReview" checked />
+          <span class="settings-toggle-track"></span>
+          <span class="settings-toggle-thumb"></span>
+        </label>
+      </div>
+
+      <div class="settings-toggle-row">
+        <span class="settings-toggle-label" data-i18n="togglePriority">智能优先级排序</span>
+        <label class="settings-toggle">
+          <input type="checkbox" id="togglePriority" checked />
+          <span class="settings-toggle-track"></span>
+          <span class="settings-toggle-thumb"></span>
+        </label>
+      </div>
+
+      <div class="settings-section-title">
+        <span class="section-icon">⏰</span>
+        <span data-i18n="reviewSettings">复盘设置</span>
+      </div>
+
+      <div class="settings-group">
+        <label class="settings-label" data-i18n="reviewTimeLabel">每日复盘时间</label>
+        <select class="settings-select" id="reviewTime">
+          <option value="20:00">20:00</option>
+          <option value="21:00" selected>21:00</option>
+          <option value="22:00">22:00</option>
+          <option value="23:00">23:00</option>
+        </select>
+      </div>
+
+      <div class="settings-actions">
+        <button class="btn btn-ghost" id="btnResetSettings" data-i18n="resetSettings">恢复默认</button>
+        <button class="btn btn-primary" id="btnSaveSettings" data-i18n="saveSettings">保存设置</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     AI Decompose Modal
+     ═══════════════════════════════════════════ -->
+<div class="ai-decompose-overlay" id="decomposeOverlay">
+  <div class="decompose-card">
+    <div class="decompose-header">
+      <div class="decompose-title">
+        <span class="decompose-icon">🤖</span>
+        <span data-i18n="decomposeTitle">AI 拆解</span>
+      </div>
+      <button class="decompose-close" id="decomposeClose">×</button>
+    </div>
+
+    <div class="decompose-body" id="decomposeBody">
+      <div class="decompose-idle" id="decomposeIdle">
+        <div style="text-align: center; padding: 20px; color: var(--muted); font-size: 14px;">
+          <span data-i18n="decomposeIdle">在输入框中写下你想拆解的任务，<br>然后点击「AI 拆解」按钮</span>
+        </div>
+      </div>
+
+      <div class="decompose-loading hidden" id="decomposeLoading">
+        <div class="decompose-loading-icon">✦</div>
+        <div class="decompose-loading-dots">
+          <span></span><span></span><span></span>
+        </div>
+        <div class="decompose-loading-text" data-i18n="decomposeLoading">AI 正在思考…</div>
+      </div>
+
+      <div class="decompose-results hidden" id="decomposeResults">
+        <div class="decompose-original">
+          <span class="decompose-original-label" data-i18n="decomposeOriginal">原始任务</span>
+          <span id="decomposeOriginalText"></span>
+        </div>
+        <div class="decompose-result-label" data-i18n="decomposeResultLabel">✨ AI 建议拆成以下步骤：</div>
+        <div class="decompose-results-list" id="decomposeResultsList">
+        </div>
+      </div>
+    </div>
+
+    <div class="decompose-footer hidden" id="decomposeFooter">
+      <div class="decompose-footer-left">
+        <span class="decompose-selected-count" id="decomposeSelectedCount"></span>
+      </div>
+      <div class="decompose-footer-right">
+        <button class="btn btn-secondary" id="btnDecomposeRegenerate" data-i18n="decomposeRegenerate">🔄 重新生成</button>
+        <button class="btn btn-primary" id="btnDecomposeAccept" data-i18n="decomposeAccept">✓ 全部采纳</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     Daily Review Modal (Full)
+     ═══════════════════════════════════════════ -->
+<div class="review-overlay" id="reviewOverlay">
+  <div class="review-card">
+    <div class="review-card-header">
+      <div class="review-card-title" data-i18n="reviewTitle">
+        📊 今日复盘
+      </div>
+      <div class="review-card-date" id="reviewDate"></div>
+    </div>
+
+    <div class="review-stats">
+      <div class="review-stat-item">
+        <div class="review-stat-num done" id="reviewDoneCount">0</div>
+        <div class="review-stat-label" data-i18n="reviewDone">今日完成</div>
+      </div>
+      <div class="review-stat-item">
+        <div class="review-stat-num remaining" id="reviewRemainingCount">0</div>
+        <div class="review-stat-label" data-i18n="reviewRemaining">未完成</div>
+      </div>
+      <div class="review-progress-wrap">
+        <div class="review-progress-bar">
+          <div class="review-progress-fill" id="reviewProgressBar"></div>
+        </div>
+        <div class="review-progress-text" id="reviewProgressText">0%</div>
+      </div>
+    </div>
+
+    <div class="review-body">
+      <div class="review-section summary">
+        <div class="review-section-title" data-i18n="reviewSummary">🌟 AI 总结</div>
+        <div class="review-section-content" id="reviewSummary">
+        </div>
+      </div>
+
+      <div class="review-section suggestion">
+        <div class="review-section-title" data-i18n="reviewSuggestion">💡 明日建议</div>
+        <div class="review-section-content" id="reviewSuggestion">
+        </div>
+      </div>
+
+      <div class="review-encourage" id="reviewEncourage">
+      </div>
+    </div>
+
+    <div class="review-card-footer">
+      <button class="btn btn-secondary" id="btnReviewClose" data-i18n="reviewClose">关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- JS: data layer → Agent → Settings → App → Entry -->
+<script src="./i18n.js"></script>
+<script src="./store.js"></script>
+<script src="./agent.js"></script>
+<script src="./settings.js"></script>
+<script src="./app.js"></script>
+
+</body>
+</html>
